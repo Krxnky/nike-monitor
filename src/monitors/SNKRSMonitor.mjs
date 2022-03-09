@@ -18,11 +18,10 @@ class SNKRSMonitor extends Monitor {
             filter: [
                 'marketplace(US)',
                 'language(en)',
-                'channelId(008be467-6c78-4079-94f0-70e2d6cc4003)',
+                'channelId(008be467-6c78-4079-94f0-70e2d6cc4003,d9a5bc42-4b9c-4976-858a-f159cf99c647,16134d36-74f2-11ea-bc55-00242ac13000)',
                 'exclusiveAccess(true,false)',
                 'upcoming(true)'
-            ],
-            includeContentThreads: true
+            ]
         };
         this._HEADERS = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36',

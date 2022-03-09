@@ -30,6 +30,7 @@ class Monitor {
 
     async fetchData()
     {
+        console.log(this.URL);
         try {
             const res = await axios(this.URL, {
                 method: this._METHOD,
