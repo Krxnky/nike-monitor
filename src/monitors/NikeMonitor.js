@@ -1,58 +1,156 @@
 import Monitor from "../Monitor.mjs";
 import Discord from "discord.js";
+import fs from "fs";
+import Database from "../data/Database.mjs";
+import mongoose from "mongoose";
+import Product from "../data/schema/Product.js";
+import { CronJob } from 'cron';
 
 class NikeMonitor extends Monitor {
-    constructor(interval)
+    constructor(CRON)
     {
-        super(interval);
+        super(CRON);
 
         this.WEBOOK = new Discord.WebhookClient({
-            id: '949908948037804052',
-            token: 'pdDeI-ZTHn4gtk-9FiMF-eUQMpXyZ_BDI2OQpVXn-GLHcYYEwlT7BqO6sTm9lS_SXaYl'
+            id: '957821980114038794',
+            token: '1ZTay_AhTTup-VkWJwsHHQXSJyFw_oYwWY-XTTRxP9DtTDVLfxLIaBFFvj1HjgcMSLwE'
         })
 
-        this._BASE_URL = 'https://api.nike.com/product_feed/threads/v3';
+        this._CHANNELS = {
+            '010794e5-35fe-4e32-aaff-cd2c74f89d61': 'SNKRS Web',
+            '008be467-6c78-4079-94f0-70e2d6cc4003': 'SNKRS',
+            '82a74ac1-c527-4470-b7b0-fb5f3ef3c2e2': 'Nike App',
+            'd9a5bc42-4b9c-4976-858a-f159cf99c647': 'Nike.com',
+            '16134d36-74f2-11ea-bc55-00242ac13000': 'Nike Store Experiences'
+        }
+
+        this._BASE_URL = 'https://api.nike.com/product_feed/threads/v2';
         this._PARAMS = {
             anchor: 0,
             count: 100,
             filter: [
                 'marketplace(US)',
                 'language(en)',
-                'channelId(d9a5bc42-4b9c-4976-858a-f159cf99c647)',
+                'channelId(82a74ac1-c527-4470-b7b0-fb5f3ef3c2e2)',
                 'exclusiveAccess(true,false)',
-                'productInfo.merchProduct.status(INACTIVE)',
-            ],
-            searchTerms: 'air jordan 1'
+                'attributeIds(16633190-45e5-4830-a068-232ac7aea82c)'
+            ]
         };
         this._HEADERS = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36',
+            'origin': 'https://www.nike.com',
+            'referer': 'https://www.nike.com'
         }
         this.buildURL();
     }
 
     async init()
     {
-        setInterval(() => {
-            this.fetchData().then(data => {
-                for(const obj of data.objects)
-                {
-                    const modificationDate = new Date(obj.productInfo[0].merchProduct.modificationDate);
-                     //console.log(modificationDate.getMonth(), modificationDate.getDay(), modificationDate.getFullYear(), obj.productInfo[0].merchProduct.styleColor);
-                    if(modificationDate.getDay() >= 5 && modificationDate.getMonth() == 3 && modificationDate.getFullYear() == 2022) 
-                    {
-                        console.log(modificationDate.getDay(), modificationDate.getFullYear(), obj.productInfo[0].merchProduct.styleColor);
-                        console.log(obj.productInfo[0].merchProduct);
-                    }
-                }
+        const job = new CronJob(this.CRON, () => {
+            console.log('fetching products...')
+            this.fetchData().then(async data => {
                 this._PARAMS.anchor += this._PARAMS.count;
                 this.buildURL();
+                if(!data) return this.sendError('data == null')
+                console.log(`success! ${data.pages.totalResources} products`);
+
+                for(const obj of data.objects)
+                {
+                    if(obj.productInfo)
+                    {
+                        for(const item of obj.productInfo)
+                        {
+                            if(!item.merchProduct) return;
+    
+                            const merchProduct = item.merchProduct;
+                            const merchPrice = item.merchPrice;
+                            const productContent = item.productContent;
+                            const launchView = item.launchView;
+
+                            const exists = await Product.findOne({styleCode: merchProduct.styleColor}).exec();
+                            if(exists)
+                            {
+                                const product = this.populateProduct(item);
+                                if(product.availabilityInfo.status != exists.availabilityInfo.status || product.availabilityInfo.visible != exists.availabilityInfo.visible)
+                                {
+                                    console.log('status update')
+                                    this.sendAlert(product);
+                                    exists.availabilityInfo = product.availabilityInfo;
+                                    exists.save();
+                                }
+                            }
+                            else
+                            {
+                                console.log('new product detected')
+                                const product = this.populateProduct(item);
+                                product.save();
+
+                                this.sendAlert(product);
+                            }
+                        }
+                    }
+                   
+                }
             })
-        }, this.INTERVAL);
+        })
+
+        console.log(`started job at ${this.CRON}`);
+        job.start();
     }
 
-    validateProduct(data)
+    populateProduct(item)
     {
+        const merchProduct = item.merchProduct;
+        const merchPrice = item.merchPrice;
+        const productContent = item.productContent;
+        const launchView = item.launchView;
 
+        const product = new Product();
+        product.styleCode = merchProduct.styleColor;
+        product.name = productContent.fullTitle;
+        product.color = productContent.colorDescription;
+        product.imageUrl = item.imageUrls.productImageUrl;
+        product.url = 'https://www.nike.com/t/' + productContent.slug;
+        product.priceInfo = {
+            price: merchPrice.currentPrice,
+            currency: merchPrice.currency
+        }
+        product.availabilityInfo = {
+            status: merchProduct.status,
+            visible: (merchProduct.hideFromCSR) ? !merchProduct.hideFromCSR : true
+        }
+
+        product.releaseInfo = {};
+        if(launchView) {
+            product.releaseInfo.method = launchView.method;
+            product.releaseInfo.startDate = launchView.startEntryDate
+        }
+        else {
+            product.releaseInfo.startDate = merchProduct.commerceStartDate;
+        }
+        product.releaseInfo.exlcusiveAccess = merchProduct.exclusiveAccess;
+        product.releaseInfo.channels = merchProduct.consumerChannels.map(c => this._CHANNELS[c.id]);
+
+        return product;
+    }
+
+    sendAlert(product)
+    {
+        console.log('sending alert...');
+        console.log('product info:\n'+ JSON.stringify(product));
+        const embed = new Discord.MessageEmbed()
+        .setAuthor({name: product.name, url: product.url})
+        .setTitle(product.color)
+        .setURL(product.url)
+        .addField('Status', `${product.availabilityInfo.status} ${(product.availabilityInfo.visible) ? ':white_check_mark:' : ':x:'}`, true)
+        .addField('Style Code', product.styleCode, true)
+        .addField('Release Info', `<t:${Math.floor(product.releaseInfo.startDate.getTime() / 1000)}:F>\nExclusive Access: ${(product.releaseInfo.exclusiveAccess) ? ':white_check_mark:' : ':x:'}\nRelease Type: **${product.releaseInfo.method}**\n${product.releaseInfo.channels.filter(c => c !== 'Nike Store Experiences').map(c => `**${c}**`).join(' ')}`)
+        .addField('Links', `[mynike://x-callback-url/product-details?style-color=${product.styleCode}](https://krxnky.dev/nike-monitor/redirect?url=mynike://x-callback-url/product-details?style-color=${product.styleCode})`)
+        .setThumbnail(product.imageUrl)
+        .setFooter({ text: new Date().toLocaleTimeString() + ' CST' })
+        .setColor(0xFFFFFF);
+
+        this.WEBOOK.send({embeds: [embed]});
     }
 }
 

@@ -1,5 +1,9 @@
+import 'dotenv/config'
+import Database from "./src/data/Database.mjs";
 import NikeMonitor from "./src/monitors/NikeMonitor.js";
 import SNKRSMonitor from "./src/monitors/SNKRSMonitor.mjs";
 
-const m = new NikeMonitor(1 * 3000);
-m.init();
+Database.connect();
+console.log('initializing monitor...');
+new NikeMonitor('*/2 * * * * *').init()
+
