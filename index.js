@@ -3,9 +3,9 @@ import Database from "./src/data/Database.mjs";
 import NikeMonitor from "./src/monitors/NikeMonitor.js";
 import SNKRSMonitor from "./src/monitors/SNKRSMonitor.mjs";
 
-Database.connect().then(() => {
+Database.connect(true).then(() => {
     console.log('initializing monitor...');
-    new NikeMonitor('*/2 * * * * *', { sendAlerts: false }).init()
+    new NikeMonitor('*/2 * * * * *', { sendAlerts: true }).init()
 })
 
 

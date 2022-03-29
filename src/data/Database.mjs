@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 class Database
 {
-    static connect() {
-        return mongoose.connect(process.env.DB_URL, {
+    static connect(debug = false) {
+        return mongoose.connect((debug) ? 'mongodb://localhost' : process.env.DB_URL, {
             useNewUrlParser: true, useUnifiedTopology: true
         })
             .then(
