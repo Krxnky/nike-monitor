@@ -5,5 +5,5 @@ import SNKRSMonitor from "./src/monitors/SNKRSMonitor.mjs";
 
 Database.connect();
 console.log('initializing monitor...');
-new NikeMonitor('*/2 * * * * *').init()
+new NikeMonitor('*/1 * * * *', { sendAlerts: true }).init()
 

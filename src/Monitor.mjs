@@ -4,7 +4,7 @@ import https from 'https';
 import Discord from 'discord.js';
 
 class Monitor {
-    constructor(CRON = '* * * * */1 *') 
+    constructor(cron = '* * * * */1 *') 
     {
         this._BASE_URL;
         this._PARAMS = {};
@@ -17,7 +17,7 @@ class Monitor {
             token: 'W-KTITXhDspi9h9a3qXjfq3BLK56FObvwJPAZ9lOwWhK9yqTQnIfoehVdTthfYe07AoN'
         })
         
-        this.CRON = CRON;
+        this.CRON = cron;
     }
 
     buildURL()

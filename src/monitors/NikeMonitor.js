@@ -1,15 +1,14 @@
 import Monitor from "../Monitor.mjs";
 import Discord from "discord.js";
-import fs from "fs";
-import Database from "../data/Database.mjs";
-import mongoose from "mongoose";
 import Product from "../data/schema/Product.js";
 import { CronJob } from 'cron';
 
 class NikeMonitor extends Monitor {
-    constructor(CRON)
+    constructor(cron, config)
     {
-        super(CRON);
+        super(cron);
+
+        this._CONFIG = config;
 
         this.WEBOOK = new Discord.WebhookClient({
             id: '957821980114038794',
@@ -31,9 +30,10 @@ class NikeMonitor extends Monitor {
             filter: [
                 'marketplace(US)',
                 'language(en)',
-                'channelId(82a74ac1-c527-4470-b7b0-fb5f3ef3c2e2)',
+                'channelId(16134d36-74f2-11ea-bc55-00242ac13000)',
                 'exclusiveAccess(true,false)',
-                'attributeIds(16633190-45e5-4830-a068-232ac7aea82c)'
+                'attributeIds(16633190-45e5-4830-a068-232ac7aea82c)',
+                'productInfo.merchProduct.channels(NikeApp)'
             ]
         };
         this._HEADERS = {
@@ -49,10 +49,13 @@ class NikeMonitor extends Monitor {
         const job = new CronJob(this.CRON, () => {
             console.log('fetching products...')
             this.fetchData().then(async data => {
-                this._PARAMS.anchor += this._PARAMS.count;
-                this.buildURL();
+                if(this._CONFIG.changePages)
+                {
+                    this._PARAMS.anchor += this._PARAMS.count;
+                    this.buildURL();
+                }
                 if(!data) return this.sendError('data == null')
-                console.log(`success! ${data.pages.totalResources} products`);
+                console.log(`success! page #: ${this._PARAMS.anchor / this._PARAMS.count} total products: ${data.pages.totalResources} objects shown: ${data.objects.length}`);
 
                 for(const obj of data.objects)
                 {
@@ -74,18 +77,28 @@ class NikeMonitor extends Monitor {
                                 if(product.availabilityInfo.status != exists.availabilityInfo.status || product.availabilityInfo.visible != exists.availabilityInfo.visible)
                                 {
                                     console.log('status update')
-                                    this.sendAlert(product);
+
                                     exists.availabilityInfo = product.availabilityInfo;
                                     exists.save();
+                                    if(this._CONFIG.sendAlerts) this.sendAlert(product, true, 'Availabilty Info Updated');
+                                }
+                                else if(product.releaseInfo.method != exists.releaseInfo.method || product.releaseInfo.exclusiveAccess != exists.releaseInfo.exclusiveAccess)
+                                {
+                                    console.log('release info update')
+
+                                    exists.releaseInfo = product.releaseInfo;
+                                    exists.save();
+                                    if(this._CONFIG.sendAlerts) this.sendAlert(product, true, 'Release Info Updated');
                                 }
                             }
                             else
                             {
                                 console.log('new product detected')
+
                                 const product = this.populateProduct(item);
                                 product.save();
 
-                                this.sendAlert(product);
+                                if(this._CONFIG.sendAlerts) this.sendAlert(product);
                             }
                         }
                     }
@@ -128,13 +141,13 @@ class NikeMonitor extends Monitor {
         else {
             product.releaseInfo.startDate = merchProduct.commerceStartDate;
         }
-        product.releaseInfo.exlcusiveAccess = merchProduct.exclusiveAccess;
+        product.releaseInfo.exclusiveAccess = merchProduct.exclusiveAccess;
         product.releaseInfo.channels = merchProduct.consumerChannels.map(c => this._CHANNELS[c.id]);
 
         return product;
     }
 
-    sendAlert(product)
+    sendAlert(product, update = false, updateMsg = 'Product Updated')
     {
         console.log('sending alert...');
         console.log('product info:\n'+ JSON.stringify(product));
@@ -149,6 +162,12 @@ class NikeMonitor extends Monitor {
         .setThumbnail(product.imageUrl)
         .setFooter({ text: new Date().toLocaleTimeString() + ' CST' })
         .setColor(0xFFFFFF);
+
+        if(update) 
+        {
+            embed.setDescription(updateMsg);
+            embed.setColor('NAVY');
+        }
 
         this.WEBOOK.send({embeds: [embed]});
     }
