@@ -2,6 +2,7 @@ import Monitor from "../Monitor.mjs";
 import Discord from "discord.js";
 import Product from "../data/schema/Product.js";
 import { CronJob } from 'cron';
+import logger from "../Logger.js";
 
 class NikeMonitor extends Monitor {
     constructor(cron, config)
@@ -9,6 +10,7 @@ class NikeMonitor extends Monitor {
         super(cron);
 
         this._CONFIG = config;
+        this._MONITOR_NAME = 'nike-us';
 
         this.WEBOOK = new Discord.WebhookClient({
             id: '957821980114038794',
@@ -33,7 +35,7 @@ class NikeMonitor extends Monitor {
                 'channelId(16134d36-74f2-11ea-bc55-00242ac13000)',
                 'exclusiveAccess(true,false)',
                 'attributeIds(16633190-45e5-4830-a068-232ac7aea82c)',
-                'productInfo.merchProduct.channels(NikeApp)'
+                'productInfo.merchProduct.channels(NikeApp,SNKRS)'
             ]
         };
         this._HEADERS = {
@@ -47,7 +49,7 @@ class NikeMonitor extends Monitor {
     async init()
     {
         const job = new CronJob(this.CRON, () => {
-            console.log('fetching products...')
+            logger.info(`[${this._MONITOR_NAME}] ` + 'fetching products...');
             this.fetchData().then(async data => {
                 if(this._CONFIG.changePages)
                 {
@@ -55,7 +57,7 @@ class NikeMonitor extends Monitor {
                     this.buildURL();
                 }
                 if(!data) return this.sendError('data == null')
-                console.log(`success! page #: ${this._PARAMS.anchor / this._PARAMS.count} total products: ${data.pages.totalResources} objects shown: ${data.objects.length}`);
+                logger.info(`[${this._MONITOR_NAME}] ` + `success! page #: ${this._PARAMS.anchor / this._PARAMS.count} total products: ${data.pages.totalResources} objects shown: ${data.objects.length}`);
 
                 for(const obj of data.objects)
                 {
@@ -76,7 +78,7 @@ class NikeMonitor extends Monitor {
                                 const product = this.populateProduct(item);
                                 if(product.availabilityInfo.status != exists.availabilityInfo.status || product.availabilityInfo.visible != exists.availabilityInfo.visible)
                                 {
-                                    console.log('status update')
+                                    logger.info(`[${this._MONITOR_NAME}] ` + 'status update')
 
                                     exists.availabilityInfo = product.availabilityInfo;
                                     exists.save();
@@ -84,7 +86,7 @@ class NikeMonitor extends Monitor {
                                 }
                                 else if(product.releaseInfo.method != exists.releaseInfo.method || product.releaseInfo.exclusiveAccess != exists.releaseInfo.exclusiveAccess)
                                 {
-                                    console.log('release info update')
+                                    logger.info(`[${this._MONITOR_NAME}] ` + 'release info update')
 
                                     exists.releaseInfo = product.releaseInfo;
                                     exists.save();
@@ -93,7 +95,7 @@ class NikeMonitor extends Monitor {
                             }
                             else
                             {
-                                console.log('new product detected')
+                                logger.info(`[${this._MONITOR_NAME}] ` + 'new product detected')
 
                                 const product = this.populateProduct(item);
                                 product.save();
@@ -107,7 +109,7 @@ class NikeMonitor extends Monitor {
             })
         })
 
-        console.log(`started job at ${this.CRON}`);
+        logger.info(`[${this._MONITOR_NAME}] ` + `started job at ${this.CRON}`);
         job.start();
     }
 
@@ -123,7 +125,7 @@ class NikeMonitor extends Monitor {
         product.name = productContent.fullTitle;
         product.color = productContent.colorDescription;
         product.imageUrl = item.imageUrls.productImageUrl;
-        product.url = 'https://www.nike.com/t/' + productContent.slug;
+        product.url = (merchProduct.consumerChannels.includes('008be467-6c78-4079-94f0-70e2d6cc4003')) ? 'https://www.nike.com/launch/' + productContent.slug : 'https://www.nike.com/t/' + productContent.slug;
         product.priceInfo = {
             price: merchPrice.currentPrice,
             currency: merchPrice.currency
@@ -149,8 +151,8 @@ class NikeMonitor extends Monitor {
 
     sendAlert(product, update = false, updateMsg = 'Product Updated')
     {
-        console.log('sending alert...');
-        console.log('product info:\n'+ JSON.stringify(product));
+        logger.info(`[${this._MONITOR_NAME}] ` + 'sending alert...');
+        logger.info(`[${this._MONITOR_NAME}] ` + 'product info:\n'+ JSON.stringify(product));
         const embed = new Discord.MessageEmbed()
         .setAuthor({name: product.name, url: product.url})
         .setTitle(product.color)

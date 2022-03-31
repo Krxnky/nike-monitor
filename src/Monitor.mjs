@@ -2,6 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import https from 'https';
 import Discord from 'discord.js';
+import logger from './Logger.js';
 
 class Monitor {
     constructor(cron = '* * * * */1 *') 

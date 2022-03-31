@@ -2,25 +2,27 @@ import Monitor from "../Monitor.mjs";
 import Discord from "discord.js";
 
 class SNKRSMonitor extends Monitor {
-    constructor(interval)
+    constructor(cron, config)
     {
-        super(interval);
+        super(cron);
+
+        this._CONFIG = config;
+        this._MONITOR_NAME = 'snkrs-us';
 
         this.WEBOOK = new Discord.WebhookClient({
-            id: '949908948037804052',
-            token: 'pdDeI-ZTHn4gtk-9FiMF-eUQMpXyZ_BDI2OQpVXn-GLHcYYEwlT7BqO6sTm9lS_SXaYl'
+            id: '958470588224135188',
+            token: '99p2qpyHNUULnIXOhgtP3Tgmb7AHZRiyR0ihhb4b1B9OgjPZeOUrnGG2Y5PU20d-ZUro'
         })
 
-        this._BASE_URL = 'https://api.nike.com/product_feed/threads/v3';
+        this._BASE_URL = 'https://api.nike.com/product_feed/threads/v2';
         this._PARAMS = {
             anchor: 0,
-            count: 50,
+            count: 100,
             filter: [
                 'marketplace(US)',
                 'language(en)',
-                'channelId(008be467-6c78-4079-94f0-70e2d6cc4003,d9a5bc42-4b9c-4976-858a-f159cf99c647,16134d36-74f2-11ea-bc55-00242ac13000)',
-                'exclusiveAccess(true,false)',
-                'upcoming(true)'
+                'channelId(008be467-6c78-4079-94f0-70e2d6cc4003)',
+                'exclusiveAccess(true,false)'
             ]
         };
         this._HEADERS = {
@@ -31,22 +33,15 @@ class SNKRSMonitor extends Monitor {
 
     async init()
     {
-        setInterval(() => {
-            this.fetchData().then(data => {
-                for(const obj of data.objects)
-                {
-                    // Checks if object is a product
-                    if(obj.productInfo) this.validateProduct(obj);
-                    else if(obj.publishedContent)
-                    console.log(obj.productInfo.length)
-                }
+        const job = new CronJob(this.CRON, () => {
+            logger.info(`[${this._MONITOR_NAME}] ` + 'fetching products...');
+            this.fetchData().then(async data => {
+
             })
-        }, this.INTERVAL);
-    }
+        })
 
-    validateProduct(data)
-    {
-
+        logger.info(`[${this._MONITOR_NAME}] ` + `started job at ${this.CRON}`);
+        job.start();
     }
 }
 
