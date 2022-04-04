@@ -15,9 +15,9 @@ const product = new mongoose.Schema({
         default: '?',
         required: false
     },
-    url: {
+    slug: {
         type: String,
-        required: true
+        default: '?'
     },
     imageUrl: {
         type: String,
@@ -27,7 +27,7 @@ const product = new mongoose.Schema({
     priceInfo: {
         type: new mongoose.Schema({
             price: Number,
-            curreny: {
+            currency: {
                 type: String,
                 default: 'USD'
             }

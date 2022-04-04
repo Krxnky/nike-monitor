@@ -9,7 +9,7 @@ class Database
             useNewUrlParser: true, useUnifiedTopology: true
         })
             .then(
-                () => logger.info(`connected to database: ${process.env.DB_URL}`),
+                () => logger.info(`connected to database: ${debug ? 'mongodb://localhost' : process.env.DB_URL}`),
                 (err) => logger.error('could not connect to database!')
             )
     }

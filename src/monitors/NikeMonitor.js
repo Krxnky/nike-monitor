@@ -76,7 +76,7 @@ class NikeMonitor extends Monitor {
                             if(exists)
                             {
                                 const product = this.populateProduct(item);
-                                if(product.availabilityInfo.status != exists.availabilityInfo.status || product.availabilityInfo.visible != exists.availabilityInfo.visible)
+                                if(product.availabilityInfo.status != exists.availabilityInfo.status /*|| product.availabilityInfo.visible != exists.availabilityInfo.visible*/)
                                 {
                                     logger.info(`[${this._MONITOR_NAME}] ` + 'status update')
 
@@ -125,14 +125,14 @@ class NikeMonitor extends Monitor {
         product.name = productContent.fullTitle;
         product.color = productContent.colorDescription;
         product.imageUrl = item.imageUrls.productImageUrl;
-        product.url = (merchProduct.consumerChannels.includes('008be467-6c78-4079-94f0-70e2d6cc4003')) ? 'https://www.nike.com/launch/' + productContent.slug : 'https://www.nike.com/t/' + productContent.slug;
+        product.slug = productContent.slug;
         product.priceInfo = {
             price: merchPrice.currentPrice,
             currency: merchPrice.currency
         }
         product.availabilityInfo = {
             status: merchProduct.status,
-            visible: (merchProduct.hideFromCSR) ? !merchProduct.hideFromCSR : true
+            visible: new Date(productContent.viewStartDate) < new Date()
         }
 
         product.releaseInfo = {};
@@ -151,16 +151,20 @@ class NikeMonitor extends Monitor {
 
     sendAlert(product, update = false, updateMsg = 'Product Updated')
     {
+        const webProductLink = (product.releaseInfo.channels.includes('SNKRS')) ? 'https://www.nike.com/launch/' + product.slug : 'https://www.nike.com/t/' + product.slug;
+        const mobileProductLink = (product.releaseInfo.channels.includes('SNKRS')) ? 'snkrs://product/' + product.styleCode : 'mynike://x-callback-url/product-details?style-color=' + product.styleCode;
+
         logger.info(`[${this._MONITOR_NAME}] ` + 'sending alert...');
         logger.info(`[${this._MONITOR_NAME}] ` + 'product info:\n'+ JSON.stringify(product));
         const embed = new Discord.MessageEmbed()
-        .setAuthor({name: product.name, url: product.url})
+        .setAuthor({name: product.name, url: webProductLink})
         .setTitle(product.color)
-        .setURL(product.url)
+        .setURL(webProductLink)
         .addField('Status', `${product.availabilityInfo.status} ${(product.availabilityInfo.visible) ? ':white_check_mark:' : ':x:'}`, true)
         .addField('Style Code', product.styleCode, true)
+        .addField('Price', `${product.priceInfo.price} ${product.priceInfo.currency}`)
         .addField('Release Info', `<t:${Math.floor(product.releaseInfo.startDate.getTime() / 1000)}:F>\nExclusive Access: ${(product.releaseInfo.exclusiveAccess) ? ':white_check_mark:' : ':x:'}\nRelease Type: **${product.releaseInfo.method}**\n${product.releaseInfo.channels.filter(c => c !== 'Nike Store Experiences').map(c => `**${c}**`).join(' ')}`)
-        .addField('Links', `[mynike://x-callback-url/product-details?style-color=${product.styleCode}](https://krxnky.dev/nike-monitor/redirect?url=mynike://x-callback-url/product-details?style-color=${product.styleCode})`)
+        .addField('Links', `[${mobileProductLink}](https://krxnky.dev/nike-monitor/redirect?url=${mobileProductLink})`)
         .setThumbnail(product.imageUrl)
         .setFooter({ text: new Date().toLocaleTimeString() + ' CST' })
         .setColor(0xFFFFFF);
