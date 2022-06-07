@@ -52,6 +52,17 @@ const product = new mongoose.Schema({
             channels: [String]
         }),
         required: false
+    },
+    sizes: {
+        type: [new mongoose.Schema({
+            level: {
+                type: String,
+                default: '?'
+            },
+            skuId: String,
+            size: String
+        })],
+        required: false
     }
 })
 

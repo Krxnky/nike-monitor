@@ -14,11 +14,11 @@ class SNKRSReserveMonitor extends Monitor {
         this._MONITOR_NAME = 'snkrs-pass-us';
 
         this.WEBOOK = new Discord.WebhookClient({
-            id: '958470588224135188',
-            token: '99p2qpyHNUULnIXOhgtP3Tgmb7AHZRiyR0ihhb4b1B9OgjPZeOUrnGG2Y5PU20d-ZUro'
+            id: '983524523175444490',
+            token: 'cPmpTgfqg0BginBcP-UV4LbK9RH0SNuHO64j2NKOJ14AnE1jG0-YUeLpr8jWIfeDeiOe'
         })
 
-        this._BASE_URL = 'https://snkrs.services.nike.com/snkrs/reserve/v1/events/en/US';
+        this._BASE_URL = 'https://snkrs.services.nike.com/snkrs/reserve/v1/events/en/US'; // /snkrs/hunts/v1?locale=en_US&country=US&lazy=true&clear=true
         this._HEADERS = {
 
         }
@@ -43,7 +43,7 @@ class SNKRSReserveMonitor extends Monitor {
                         const reserve = this.populateReserve(obj);
                         reserve.save();
 
-                        if(this._CONFIG.sendAlerts) this.sendAlert(reserve, obj);
+                        if(this._CONFIG.sendAlerts) this.sendAlert(reserve);
                     }
                 }
             })
@@ -74,7 +74,7 @@ class SNKRSReserveMonitor extends Monitor {
         return reserve;
     }
 
-    sendAlert(reserve, raw_json)
+    sendAlert(reserve)
     {
         const event_names = {
             EVENT_PASS: 'SNKRS Pass',
@@ -82,23 +82,20 @@ class SNKRSReserveMonitor extends Monitor {
         }
 
         logger.info(`[${this._MONITOR_NAME}] ` + 'sending alert...');
-        logger.info(`[${this._MONITOR_NAME}] ` + 'reserve info:\n'+ JSON.stringify(raw_json));
+        logger.info(`[${this._MONITOR_NAME}] ` + 'reserve info:\n'+ reserve);
 
         const embed = new Discord.MessageEmbed()
-        .setAuthor({name: `${reserve.assets.name} ${reserve.assets.colorway}`})
         .setTitle((event_names)[reserve.eventType])
-        .setURL()
-        .addField('Type', reserve.eventType, true)
+        .setDescription(`${reserve.assets.name} ${reserve.assets.colorway}`)
         .addField('Starts', ` <t:${Math.floor(reserve.releaseInfo.start.getTime() / 1000)}:F>`, true)
         .addField('Ends', ` <t:${Math.floor(reserve.releaseInfo.end.getTime() / 1000)}:F>`, true)
         .addField('Price', reserve.assets.price, true)
-        .addField('Assets', `Colorway: **${reserve.assets.colorway}**\nName: **${reserve.assets.name}**\nPrice: **${reserve.assets.price}**\n\`${reserve.assets.styleCode}\``)
         .setColor('AQUA')
-        .setFooter({ text: new Date().toLocaleTimeString() + ' CST' })
+        .setTimestamp()
+        .setFooter({ text: 'Monitor By Krxnky#1274'})
         .setThumbnail(reserve.imageUrl);
 
         this.WEBOOK.send({embeds: [embed]});
-        this.WEBOOK.send(`\`\`\`json\n${JSON.stringify(raw_json)}\n\`\`\``)
     }
 }
 
