@@ -1,19 +1,21 @@
 # Nike Monitor
 
-Nike Monitor is a Node.js bot that keeps you updated on new product additions and updates on Nike and SNKRS. It also alerts you when SNKRS passes drop, ensuring you never miss a release. Notifications are sent directly to your Discord channel via a webhook.
+Nike Monitor is a Node.js bot that tracks new product additions and updates from Nike and SNKRS. It also alerts you when SNKRS passes drop, ensuring you never miss a release. Notifications are sent directly to your Discord channel via a webhook. Additionally, the bot stores current product data in a MongoDB database.
 
 ## Features
 
-- **Product Monitoring:** Tracks new products and updates from Nike and SNKRS.
+- **Product Monitoring:** Keeps track of new products and updates from Nike and SNKRS.
 - **SNKRS Pass Alerts:** Notifies you when SNKRS passes are available.
+- **MongoDB Integration:** Stores current product data for easy access.
 - **Discord Integration:** Sends real-time notifications to your Discord channel.
 
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 
 - Node.js (v14 or higher)
+- MongoDB
 - A Discord webhook URL
+
+## Getting Started
 
 ### Installation
 
@@ -28,9 +30,10 @@ Nike Monitor is a Node.js bot that keeps you updated on new product additions an
    npm install
    ```
 
-3. Configure your webhook URL:
-   - Create a `.env` file in the root directory and add your Discord webhook:
+3. Configure your environment:
+   - Create a `.env` file in the root directory and add your MongoDB URL and Discord webhook:
      ```
+     MONGODB_URL=your_mongodb_url
      DISCORD_WEBHOOK_URL=your_webhook_url
      ```
 
@@ -41,7 +44,7 @@ Nike Monitor is a Node.js bot that keeps you updated on new product additions an
 
 ## Usage
 
-Once the bot is running, it will monitor the Nike and SNKRS APIs and send notifications to your specified Discord channel.
+Once the bot is running, it will monitor the Nike and SNKRS APIs, store current product data in MongoDB, and send notifications to your specified Discord channel.
 
 ## Contributing
 
